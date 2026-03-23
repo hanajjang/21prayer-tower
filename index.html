@@ -449,7 +449,7 @@
 
     <script>
         // 🔑 Google Apps Script 배포 URL
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuh1S5UpRBvU5fuk8NA1T3IQzFx5hXR-J3_KxQ08ocsd_Lois3wbAnF2zcCUAdgbfKfA/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXcgTftLqj7I7ZplFHrSKQbiVRBtSQcsPAx5XsNQopIVWGeeG04KhVXxx6pfwjg_M/exec';
         
         let gameState = {
             currentDay: 0,
@@ -475,7 +475,7 @@
             castleHistory: [0]
         };
         
-        // 기도제목 (Config maxHeight에 따라 자동 선택)
+        // 기도제목
         const prayerByDays = {
             5: [
                 { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
@@ -550,7 +550,18 @@
                 
                 const participants = await partRes.json();
                 if (participants && participants.length > 0) {
-                    gameState.participants = participants;
+                    // 기존 이름 순서 유지하면서 Google Sheets 데이터와 병합
+                    gameState.participants = gameState.participants.map(existing => {
+                        const loaded = participants.find(p => p.name === existing.name);
+                        if (loaded) {
+                            return {
+                                name: loaded.name,
+                                completed: loaded.completed === true || loaded.completed === 'true',
+                                completedTime: loaded.completedTime || null
+                            };
+                        }
+                        return existing;
+                    });
                 }
                 
                 updateSaveStatus('로드됨 ✓');
@@ -770,7 +781,6 @@
             document.getElementById('progressPercent').textContent = Math.round((gameState.viewingDay / gameState.maxHeight) * 100) + '%';
             document.getElementById('progressFill').style.width = (gameState.viewingDay / gameState.maxHeight * 100) + '%';
             
-            // 과거 기록도 볼 수 있게: castleHistory의 최대 인덱스까지만 허용
             const maxViewableDay = gameState.castleHistory.length - 1;
             document.getElementById('prevBtn').disabled = gameState.viewingDay === 0;
             document.getElementById('nextBtn').disabled = gameState.viewingDay >= maxViewableDay;
