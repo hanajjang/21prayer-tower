@@ -404,6 +404,868 @@
                     <button class="nav-button" id="prevBtn" onclick="previousDay()">←</button>
                     <div class="game-canvas">
                         <div class="canvas-content">
+                            <!-- 이미지 URL: tower.png를 GitHub에 업로드한 후 여기 수정 -->
+                            <img id="castleImage" 
+                                 src="tower.png" 
+                                 alt="모래성" 
+                                 style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));"
+                                 onerror="this.style.display='none';">
+                            <div class="day-label" id="dayLabel">D+0</div>
+                        </div>
+                    </div>
+                    <button class="nav-button" id="nextBtn" onclick="nextDay()" disabled>→</button>
+                </div>
+                
+                <!-- 진행률 -->
+                <div class="progress-section">
+                    <div class="progress-label">
+                        <span>모래성 완성도</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 오른쪽: 기도제목, 통계, 참가자 -->
+            <div class="right-section">
+                <!-- 기도제목 -->
+                <div class="prayer-section">
+                    <div class="prayer-title">📿 기도제목</div>
+                    <div class="prayer-list">
+                        <div class="prayer-item">
+                            <div class="prayer-item-title">1️⃣ 선생님을 위한 기도</div>
+                            <div>6월 전까지 재판을 위해</div>
+                        </div>
+                        <div class="prayer-item">
+                            <div class="prayer-item-title">2️⃣ 청미부서를 위한 기도</div>
+                            <div>팀원, 생명기도, 주의 뜻</div>
+                        </div>
+                        <div class="prayer-item">
+                            <div class="prayer-item-title">3️⃣ 나의 사명과 차원</div>
+                            <div>사명과 차원을 높이기 위해</div>
+                        </div>
+                        <div class="prayer-item">
+                            <div class="prayer-item-title">4️⃣ 감사, 회개 등</div>
+                            <div>감사와 회개의 기도</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 통계 -->
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="completedCount">0</div>
+                        <div class="stat-label">완료</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="pendingCount">12</div>
+                        <div class="stat-label">진행중</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="successRate">0%</div>
+                        <div class="stat-label">성공률</div>
+                    </div>
+                </div>
+                
+                <!-- 참가자 -->
+                <div class="participants-section">
+                    <div class="section-title">오늘의 참가자</div>
+                    <div class="participants-grid" id="participantsList"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 알림 -->
+        <div id="notificationArea"></div>
+    </div>
+
+    <script>
+        // 게임 상태
+        let gameState = {
+            currentDay: 0,
+            viewingDay: 0,
+            lastResetTime: new Date(), // 마지막 하루 리셋 시간
+            participants: [
+                { name: '정지양', completed: false, completedTime: null },
+                { name: '이누리', completed: false, completedTime: null },
+                { name: '이나영', completed: false, completedTime: null },
+                { name: '김지윤', completed: false, completedTime: null },
+                { name: '주손하나', completed: false, completedTime: null },
+                { name: '김예람', completed: false, completedTime: null },
+                { name: '김효진', completed: false, completedTime: null },
+                { name: '이태령', completed: false, completedTime: null },
+                { name: '최수아', completed: false, completedTime: null },
+                { name: '진현주', completed: false, completedTime: null },
+                { name: '최다영', completed: false, completedTime: null },
+                { name: '성유나', completed: false, completedTime: null }
+            ],
+            collapseCount: 0,
+            castleHeight: 0,
+            maxHeight: 21,
+            castleHistory: [0] // D+0부터 기록
+        };
+        
+        // 시간 포맷팅
+        function getCurrentTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+        
+        // 날짜 포맷팅
+        function formatDate() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            return `${year}년 ${month}월 ${day}일`;
+        }
+        
+        // 이전 날짜로 이동
+        function previousDay() {
+            if (gameState.viewingDay > 0) {
+                gameState.viewingDay--;
+                updateUI();
+            }
+        }
+        
+        // 다음 날짜로 이동
+        function nextDay() {
+            if (gameState.viewingDay < gameState.currentDay) {
+                gameState.viewingDay++;
+                updateUI();
+            }
+        }
+        
+        // 참가자 클릭
+        function toggleParticipant(index) {
+            if (gameState.viewingDay !== gameState.currentDay) return;
+            
+            const p = gameState.participants[index];
+            if (!p.completed) {
+                p.completed = true;
+                p.completedTime = getCurrentTime();
+                
+                // 모래성 높이를 부드럽게 올린다
+                const completedCount = gameState.participants.filter(x => x.completed).length;
+                const newHeight = gameState.currentDay + (completedCount / 12);
+                
+                // 애니메이션으로 높이 변화
+                animateCastleHeight(newHeight);
+                
+                updateUI();
+                
+                // 모두 완료되었는지 확인
+                if (gameState.participants.every(p => p.completed)) {
+                    completeDay();
+                }
+            }
+        }
+        
+        // 모래성 높이 애니메이션
+        function animateCastleHeight(targetHeight) {
+            const startHeight = gameState.castleHeight;
+            const duration = 600; // 600ms
+            const startTime = Date.now();
+            
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Ease-out cubic 함수 사용
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                gameState.castleHeight = startHeight + (targetHeight - startHeight) * easeProgress;
+                
+                drawCastle();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            animate();
+        }
+        
+        // 하루가 지났는지 확인 및 자동 리셋
+        function checkAndResetDay() {
+            const now = new Date();
+            const lastReset = gameState.lastResetTime;
+            
+            // 테스트용: 1분 (60초) 경과 확인
+            // 실제 배포: 24시간 (86400000ms) 경과 확인
+            const timeDiff = now - lastReset;
+            const minutesPassed = timeDiff / (1000 * 60); // 분 단위
+            
+            // 테스트: 1분 이후 체크
+            if (minutesPassed >= 1) {
+                // 모든 참가자가 완료했는가?
+                const allCompleted = gameState.participants.every(p => p.completed);
+                
+                if (allCompleted) {
+                    // 모두 완료했으면 다음 날로 진행
+                    autoCompleteDay();
+                } else {
+                    // 1명 이상 미완료했으면 무너짐 (D+1로 리셋)
+                    autoCollapseDay();
+                }
+                
+                // 중요: lastResetTime을 지금으로 업데이트하여 다시 1분을 센다
+                gameState.lastResetTime = new Date();
+            }
+        }
+        
+        // 자동 완료 (24시간 후 모두 완료했을 때)
+        function autoCompleteDay() {
+            if (gameState.currentDay < gameState.maxHeight) {
+                gameState.currentDay++;
+                gameState.viewingDay = gameState.currentDay;
+                gameState.castleHeight = gameState.currentDay;
+                gameState.castleHistory.push(gameState.currentDay);
+                
+                gameState.participants.forEach(p => {
+                    p.completed = false;
+                    p.completedTime = null;
+                });
+                
+                const notification = document.getElementById('notificationArea');
+                notification.innerHTML = `
+                    <div class="notification success">
+                        🎉 24시간 완료! 모래성이 한층 높아졌습니다! (${gameState.currentDay}/21)
+                    </div>
+                `;
+                
+                setTimeout(() => {
+                    notification.innerHTML = '';
+                }, 5000);
+                
+                updateUI();
+            } else if (gameState.currentDay === gameState.maxHeight) {
+                const notification = document.getElementById('notificationArea');
+                notification.innerHTML = `
+                    <div class="notification success">
+                        🏆 축하합니다! 21층 모래성이 완성되었습니다! 🎉
+                    </div>
+                `;
+            }
+        }
+        
+        // 자동 무너짐 (24시간 후 미완료자 있을 때)
+        function autoCollapseDay() {
+            gameState.collapseCount++;
+            gameState.currentDay = 0;
+            gameState.viewingDay = 0;
+            gameState.castleHeight = 0;
+            gameState.castleHistory = [0];
+            
+            gameState.participants.forEach(p => {
+                p.completed = false;
+                p.completedTime = null;
+            });
+            
+            const notification = document.getElementById('notificationArea');
+            notification.innerHTML = `
+                <div class="notification collapse">
+                    ⚠️ 24시간 경과! 조건 미충족자가 있어 모래성이 무너졌습니다...<br/>
+                    <span style="font-size: 12px;">D+1로 리셋됩니다. 화이팅! 💪</span>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                notification.innerHTML = '';
+            }, 5000);
+            
+            updateUI();
+        }
+        
+        // 하루 완료 (12명 모두 클릭했을 때 - 하지만 아직 다음날로 넘어가지는 않음)
+        function completeDay() {
+            const notification = document.getElementById('notificationArea');
+            notification.innerHTML = `
+                <div class="notification success">
+                    ✅ 오늘 모두 완료했습니다!<br/>
+                    <span style="font-size: 12px;">내일 자동으로 다음 모래성으로 진행됩니다.</span>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                notification.innerHTML = '';
+            }, 5000);
+            
+            updateUI();
+        }
+        
+        // 모래성 이미지 업데이트 (높이에 따른 opacity 또는 transform)
+        function updateCastleImage() {
+            const castleImage = document.getElementById('castleImage');
+            if (!castleImage) return;
+            
+            // 보고 있는 날짜의 높이 계산
+            let displayHeight;
+            if (gameState.viewingDay === gameState.currentDay) {
+                displayHeight = gameState.castleHeight;
+            } else {
+                displayHeight = gameState.castleHistory[gameState.viewingDay] || 0;
+            }
+            
+            // 높이에 따른 스케일 조정 (선택사항)
+            // 높이가 높을수록 이미지가 조금 더 커짐 (0% ~ 100%)
+            const scale = 0.7 + (displayHeight / gameState.maxHeight) * 0.3;
+            castleImage.style.transform = `scale(${scale})`;
+            
+            // 이미지가 로드되지 않았으면 SVG 모래성 표시
+            if (!castleImage.src || castleImage.src.includes('tower.png')) {
+                drawCastleSVG();
+            }
+        }
+        
+        // SVG 모래성 그리기 (이미지 없을 때 대체)
+        function drawCastleSVG() {
+            // 이미지가 없으면 SVG로 모래성 표시
+            const canvas = document.querySelector('.game-canvas');
+            if (!canvas.querySelector('svg')) {
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('width', '200');
+                svg.setAttribute('height', '300');
+                svg.setAttribute('viewBox', '0 0 200 300');
+                svg.style.maxWidth = '100%';
+                svg.style.maxHeight = '100%';
+                
+                // 기본 모래성 블록
+                let displayHeight;
+                if (gameState.viewingDay === gameState.currentDay) {
+                    displayHeight = gameState.castleHeight;
+                } else {
+                    displayHeight = gameState.castleHistory[gameState.viewingDay] || 0;
+                }
+                
+                const blockWidth = 200;
+                const blockHeight = 14;
+                const baseY = 300 - 40;
+                const numLayers = Math.ceil(displayHeight);
+                
+                for (let layer = 0; layer < numLayers; layer++) {
+                    const x = 0;
+                    const y = baseY - (layer * blockHeight);
+                    let height = blockHeight;
+                    
+                    if (layer === numLayers - 1 && displayHeight !== numLayers) {
+                        height = blockHeight * (displayHeight - layer);
+                    }
+                    
+                    const colorIntensity = 210 - layer * 3;
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', x);
+                    rect.setAttribute('y', y);
+                    rect.setAttribute('width', blockWidth);
+                    rect.setAttribute('height', height);
+                    rect.setAttribute('fill', `rgb(${colorIntensity}, ${colorIntensity - 30}, ${colorIntensity - 70})`);
+                    svg.appendChild(rect);
+                }
+                
+                canvas.appendChild(svg);
+            }
+        }
+        
+        function drawCastle() {
+            const castleBlocks = document.getElementById('castleBlocks');
+            castleBlocks.innerHTML = '';
+            
+            // 보고 있는 날짜의 모래성 높이 사용
+            let displayHeight;
+            if (gameState.viewingDay === gameState.currentDay) {
+                // 오늘은 실시간 높이 표시
+                displayHeight = gameState.castleHeight;
+            } else {
+                // 과거는 저장된 높이 표시 (정확하게 저장된 값)
+                displayHeight = gameState.castleHistory[gameState.viewingDay] || 0;
+            }
+            
+            const blockWidth = 200;
+            const blockHeight = 14;
+            const baseY = 300 - 40;
+            
+            const numLayers = Math.ceil(displayHeight);
+            
+            for (let layer = 0; layer < numLayers; layer++) {
+                const x = 0;
+                const y = baseY - (layer * blockHeight);
+                
+                // 마지막 층이 부분적으로 표시될 수 있음
+                let height = blockHeight;
+                if (layer === numLayers - 1 && displayHeight !== numLayers) {
+                    height = blockHeight * (displayHeight - layer);
+                }
+                
+                // 색상 (아래로 갈수록 어두움)
+                const colorIntensity = 210 - layer * 3;
+                
+                // 블록
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', x);
+                rect.setAttribute('y', y);
+                rect.setAttribute('width', blockWidth);
+                rect.setAttribute('height', height);
+                rect.setAttribute('fill', `rgb(${colorIntensity}, ${colorIntensity - 30}, ${colorIntensity - 70})`);
+                rect.setAttribute('stroke', `rgb(${colorIntensity - 40}, ${colorIntensity - 60}, ${colorIntensity - 90})`);
+                rect.setAttribute('stroke-width', '0.5');
+                castleBlocks.appendChild(rect);
+            }
+            
+            // 깃발
+            if (displayHeight > 0) {
+                const flagX = 100;
+                const flagY = baseY - (displayHeight * blockHeight) - 30;
+                
+                // 깃대
+                const pole = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                pole.setAttribute('x1', flagX);
+                pole.setAttribute('y1', flagY + 30);
+                pole.setAttribute('x2', flagX);
+                pole.setAttribute('y2', flagY);
+                pole.setAttribute('stroke', '#8B7355');
+                pole.setAttribute('stroke-width', '3');
+                castleBlocks.appendChild(pole);
+                
+                // 깃
+                const flag = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                flag.setAttribute('points', `${flagX},${flagY} ${flagX + 25},${flagY + 10} ${flagX + 20},${flagY + 18}`);
+                flag.setAttribute('fill', '#FFD700');
+                flag.setAttribute('stroke', '#FFA500');
+                flag.setAttribute('stroke-width', '1');
+                castleBlocks.appendChild(flag);
+            }
+        }
+        
+        // UI 업데이트
+        function updateUI() {
+            const completed = gameState.participants.filter(p => p.completed).length;
+            const total = gameState.participants.length;
+            const percent = Math.round((completed / total) * 100);
+            
+            // 헤더
+            document.getElementById('collapseCount').textContent = gameState.collapseCount;
+            document.getElementById('todayDate').textContent = formatDate();
+            document.getElementById('ddayNumber').textContent = gameState.currentDay;
+            document.getElementById('dayLabel').textContent = `D+${gameState.viewingDay}`;
+            
+            // 통계 (오늘 데이터만)
+            if (gameState.viewingDay === gameState.currentDay) {
+                document.getElementById('completedCount').textContent = completed;
+                document.getElementById('pendingCount').textContent = total - completed;
+                document.getElementById('successRate').textContent = percent + '%';
+            } else {
+                // 과거 데이터 (모두 완료)
+                document.getElementById('completedCount').textContent = total;
+                document.getElementById('pendingCount').textContent = '0';
+                document.getElementById('successRate').textContent = '100%';
+            }
+            
+            // 진행도
+            document.getElementById('progressPercent').textContent = Math.round((gameState.viewingDay / gameState.maxHeight) * 100) + '%';
+            document.getElementById('progressFill').style.width = (gameState.viewingDay / gameState.maxHeight * 100) + '%';
+            
+            // 화살표 활성화/비활성화
+            document.getElementById('prevBtn').disabled = gameState.viewingDay === 0;
+            document.getElementById('nextBtn').disabled = gameState.viewingDay === gameState.currentDay;
+            
+            // 모래성 높이에 따른 이미지 opacity 조정 (선택사항)
+            updateCastleImage();
+            
+            // 참가자 카드
+            const list = document.getElementById('participantsList');
+            list.innerHTML = gameState.participants.map((p, idx) => `
+                <div class="participant-card ${p.completed ? 'completed' : 'pending'} ${gameState.viewingDay !== gameState.currentDay ? 'disabled' : ''}" 
+                     onclick="toggleParticipant(${idx})">
+                    <div class="participant-name">${p.name}</div>
+                    <div class="participant-status">${p.completed ? '✓ 완료' : '○ 대기'}</div>
+                    ${p.completedTime ? `<div class="completed-time">${p.completedTime}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        // 1초마다 하루 지났는지 확인 (테스트용으로 1초 = 1시간 대신 원하면 수정)
+        setInterval(() => {
+            checkAndResetDay();
+        }, 60000); // 1분마다 체크 (실제 배포할 때)
+        
+        // 초기화
+        document.getElementById('todayDate').textContent = formatDate();
+        updateUI();
+    </script>
+</body>
+</html>            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #dc2626;
+        }
+        
+        .today-date {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .dday {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e40af;
+        }
+        
+        /* 메인 컨텐츠 */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        /* 왼쪽: 게임 섹션 */
+        .game-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .game-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .nav-button {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 28px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .nav-button:hover:not(:disabled) {
+            background: #dbeafe;
+            border-color: #3b82f6;
+            color: #1e40af;
+            transform: scale(1.1);
+        }
+        
+        .nav-button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .game-canvas {
+            background: linear-gradient(180deg, #87ceeb 0%, #e0f6ff 50%, #f4e4c1 100%);
+            border-radius: 16px;
+            position: relative;
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .canvas-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 40px 20px 60px;
+        }
+        
+        .castle-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            object-position: center bottom;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+        }
+        
+        .day-label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.3);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        /* 진행률 */
+        .progress-section {
+            margin: 0;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        /* 오른쪽: 기도제목 & 참가자 & 통계 */
+        .right-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        /* 기도제목 섹션 */
+        .prayer-section {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        
+        .prayer-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.8rem;
+        }
+        
+        .prayer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .prayer-item {
+            background: white;
+            border: 0.5px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #666;
+        }
+        
+        .prayer-item-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 2px;
+            font-size: 10px;
+        }
+        
+        /* 통계 */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-card {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 0.8rem;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        /* 참가자 섹션 */
+        .participants-section {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.8rem;
+        }
+        
+        .participants-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        
+        .participant-card {
+            background: white;
+            border: 0.5px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .participant-card:hover:not(.disabled) {
+            transform: translateY(-2px);
+            border-color: #bfdbfe;
+            background: #f0f9ff;
+        }
+        
+        .participant-card.completed {
+            background: rgba(74, 222, 128, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+        
+        .participant-card.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .participant-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 3px;
+        }
+        
+        .participant-status {
+            font-size: 9px;
+            font-weight: 500;
+        }
+        
+        .completed .participant-status {
+            color: #22c55e;
+        }
+        
+        .pending .participant-status {
+            color: #666;
+        }
+        
+        .completed-time {
+            font-size: 8px;
+            color: #16a34a;
+            margin-top: 2px;
+            font-weight: 600;
+        }
+        
+        /* 알림 */
+        .notification {
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            animation: slideUp 0.4s ease;
+            margin-top: 1rem;
+        }
+        
+        .notification.success {
+            background: rgba(74, 222, 128, 0.15);
+            color: #16a34a;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .notification.collapse {
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 1000px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .participants-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 상단 헤더 -->
+        <div class="header">
+            <div class="collapse-counter">
+                <span>⚠️무너짐</span>
+                <span id="collapseCount">0</span>
+            </div>
+            
+            <div class="today-date" id="todayDate">
+                2026년 3월 23일
+            </div>
+            
+            <div class="dday">
+                <span>D + <span id="ddayNumber">0</span></span>
+            </div>
+        </div>
+        
+        <!-- 메인 컨텐츠 -->
+        <div class="main-content">
+            <!-- 왼쪽: 게임 섹션 -->
+            <div class="game-section">
+                <!-- 게임 컨트롤 -->
+                <div class="game-controls">
+                    <button class="nav-button" id="prevBtn" onclick="previousDay()">←</button>
+                    <div class="game-canvas">
+                        <div class="canvas-content">
                             <!-- 방법: 아래의 src에 이미지 URL 또는 Base64 입력 -->
                             <img id="castleImage" 
                                  src="data:image/png;base64,[BASE64_코드_여기_붙여넣기]" 
