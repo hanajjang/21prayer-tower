@@ -132,6 +132,13 @@
             justify-content: center;
         }
         
+        .castle-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+        
         .day-label {
             display: none;
         }
@@ -386,34 +393,11 @@
                     <button class="nav-button" id="prevBtn" onclick="previousDay()">←</button>
                     <div class="game-canvas">
                         <div class="canvas-content">
-                            <svg id="castleSvg" viewBox="0 0 500 300" preserveAspectRatio="xMidYMid meet">
-                                <defs>
-                                    <linearGradient id="tower.png" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#D4A574;stop-opacity:1" />
-                                        <stop offset="100%" style="stop-color:#8B7355;stop-opacity:1" />
-                                    </linearGradient>
-                                </defs>
-                                
-                                <rect width="500" height="150" fill="#87CEEB"/>
-                                <ellipse cx="250" cy="280" rx="250" ry="40" fill="#F4A460" opacity="0.3"/>
-                                
-                                <g id="castleBlocks">
-                                    <rect x="100" y="260" width="300" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="120" y="240" width="260" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="140" y="220" width="220" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="160" y="200" width="180" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="180" y="180" width="140" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="200" y="160" width="100" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="220" y="140" width="60" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="230" y="120" width="40" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="235" y="100" width="30" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="240" y="80" width="20" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="235" y="60" width="30" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <rect x="240" y="40" width="20" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
-                                    <line x1="250" y1="40" x2="250" y2="0" stroke="#8B4513" stroke-width="3"/>
-                                    <polygon points="250,0 270,10 265,20" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
-                                </g>
-                            </svg>
+                            <img id="castleImage" 
+                                 src="tower.png" 
+                                 alt="모래성"
+                                 class="castle-image"
+                                 style="clip-path: inset(100% 0 0 0);">
                             <div class="day-label" id="dayLabel">D+0</div>
                             <div class="save-status" id="saveStatus">로딩중...</div>
                         </div>
@@ -481,8 +465,8 @@
     </div>
 
     <script>
-        // 🔑 Google Apps Script 배포 URL (여기에 입력!)
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/d/AKfycbzEV6OJSJDGUcvEbecRgij2oPZolmnIb4-x7o7h4e9BPRKTFMwJB2oFri2fEIRoUtB4AA/userweb';
+        // 🔑 Google Apps Script 배포 URL (정확한 배포 ID 입력됨)
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuh1S5UpRBvU5fuk8NA1T3IQzFx5hXR-J3_KxQ08ocsd_Lois3wbAnF2zcCUAdgbfKfA/exec';
         
         let gameState = {
             currentDay: 0,
@@ -578,15 +562,23 @@
         
         async function saveParticipants() {
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
+                const res = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     body: JSON.stringify({
                         action: 'saveParticipants',
                         participants: gameState.participants
                     })
                 });
+                
+                const result = await res.json();
+                if (result.status === 'ok') {
+                    updateSaveStatus('저장됨 ✓');
+                } else {
+                    updateSaveStatus('저장 실패');
+                }
             } catch(err) {
                 console.log('참가자 저장 실패:', err);
+                updateSaveStatus('저장 실패');
             }
         }
         
@@ -713,8 +705,8 @@
         }
         
         function updateCastleImage() {
-            const castleBlocks = document.getElementById('castleBlocks');
-            if (!castleBlocks) return;
+            const castleImage = document.getElementById('castleImage');
+            if (!castleImage) return;
             
             let displayHeight;
             if (gameState.viewingDay === gameState.currentDay) {
@@ -725,19 +717,11 @@
                 displayHeight = gameState.castleHistory[gameState.viewingDay] || 0;
             }
             
-            const blockElements = castleBlocks.querySelectorAll('rect[y]');
-            const flagAndPole = castleBlocks.querySelectorAll('line, polygon');
+            // 21일을 기준으로 이미지 아래에서부터 표시 (클립)
+            const percentageToShow = (displayHeight / gameState.maxHeight) * 100;
             
-            const totalBlocks = 12;
-            const blocksToShow = Math.ceil((displayHeight / gameState.maxHeight) * totalBlocks);
-            
-            blockElements.forEach((block, index) => {
-                block.style.opacity = index < blocksToShow ? '1' : '0';
-            });
-            
-            flagAndPole.forEach(element => {
-                element.style.opacity = blocksToShow > 0 ? '1' : '0';
-            });
+            // 아래에서부터 올라오는 효과
+            castleImage.style.clipPath = `inset(${100 - percentageToShow}% 0 0 0)`;
         }
         
         function updateUI() {
