@@ -448,393 +448,315 @@
     </div>
 
     <script>
-        // 🔑 Google Apps Script 배포 URL
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwl7tVNmdcPsKsR9fbGsW99VKxT-4znXQKAHTM2B5DHS2TrReFTZyB1vwsVUOjtzmCmTw/exec';
+        // 🔑 Google Apps Script 배포 URL (기존과 동일)
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwl7tVNmdcPsKsR9fbGsW99VKxT-4znXQKAHTM2B5DHS2TrReFTZyB1vwsVUOjtzmCmTw/exec';
+
+let gameState = {
+    currentDay: 0,
+    viewingDay: 0,
+    castleHeight: 0,
+    lastResetDate: new Date().toDateString(),
+    participants: [
+        { name: '정지양', completed: false, completedTime: null },
+        { name: '이누리', completed: false, completedTime: null },
+        { name: '이나영', completed: false, completedTime: null },
+        { name: '김지윤', completed: false, completedTime: null },
+        { name: '주손하나', completed: false, completedTime: null },
+        { name: '김예람', completed: false, completedTime: null },
+        { name: '김효진', completed: false, completedTime: null },
+        { name: '이태령', completed: false, completedTime: null },
+        { name: '최수아', completed: false, completedTime: null },
+        { name: '진현주', completed: false, completedTime: null },
+        { name: '최다영', completed: false, completedTime: null },
+        { name: '성유나', completed: false, completedTime: null }
+    ],
+    collapseCount: 0,
+    maxHeight: 21,
+    castleHistory: [0]
+};
+
+// 기도제목 (기존과 동일)
+const prayerByDays = {
+    5: [ { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' }, { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' }, { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' }, { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' }, { num: 5, title: '특별 기도', content: '오늘의 기도 제목' } ],
+    7: [ { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' }, { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' }, { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' }, { num: 4, title: '가족을 위한 기도', content: '가족 모두의 신앙 성장' }, { num: 5, title: '감사, 회개 등', content: '감사와 회개의 기도' }, { num: 6, title: '지역사회를 위한 기도', content: '지역의 영적 부흥' }, { num: 7, title: '특별 기도', content: '오늘의 특별한 기도제목' } ],
+    21: [ { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' }, { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' }, { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' }, { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' } ]
+};
+
+// 시간 포맷을 HH:MM으로 예쁘게 자르는 함수 (문제 4번 해결)
+function formatCleanTime(timeVal) {
+    if (!timeVal) return null;
+    if (typeof timeVal === 'string' && /^\d{2}:\d{2}$/.test(timeVal)) return timeVal;
+    try {
+        const d = new Date(timeVal);
+        if (!isNaN(d.getTime())) {
+            return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+    } catch(e) {}
+    return String(timeVal).substring(0, 5); 
+}
+
+function getCurrentTime() {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+function formatDate() {
+    const date = new Date();
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+function renderPrayerList() {
+    const prayerList = document.getElementById('prayerList');
+    const prayers = prayerByDays[gameState.maxHeight] || prayerByDays[21];
+    prayerList.innerHTML = prayers.map(prayer => `
+        <div class="prayer-item">
+            <div class="prayer-item-title">${prayer.num}️⃣ ${prayer.title}</div>
+            <div>${prayer.content}</div>
+        </div>
+    `).join('');
+}
+
+// 📥 데이터 불러오기 및 날짜 검증 (문제 2번, 3번 해결 핵심)
+async function loadGameData() {
+    try {
+        updateSaveStatus('로딩중...');
         
-        // 중복 실행 방지
-        let lastAutoExecuteDate = null;
+        const gameRes = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'getGame' }) });
+        const gameData = await gameRes.json();
         
-        let gameState = {
-            currentDay: 0,
-            viewingDay: 0,
-            castleHeight: 0,
-            lastResetDate: new Date().toDateString(),
-            participants: [
-                { name: '정지양', completed: false, completedTime: null },
-                { name: '이누리', completed: false, completedTime: null },
-                { name: '이나영', completed: false, completedTime: null },
-                { name: '김지윤', completed: false, completedTime: null },
-                { name: '주손하나', completed: false, completedTime: null },
-                { name: '김예람', completed: false, completedTime: null },
-                { name: '김효진', completed: false, completedTime: null },
-                { name: '이태령', completed: false, completedTime: null },
-                { name: '최수아', completed: false, completedTime: null },
-                { name: '진현주', completed: false, completedTime: null },
-                { name: '최다영', completed: false, completedTime: null },
-                { name: '성유나', completed: false, completedTime: null }
-            ],
-            collapseCount: 0,
-            maxHeight: 21,
-            castleHistory: [0]
-        };
-        
-        // 기도제목
-        const prayerByDays = {
-            5: [
-                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
-                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
-                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
-                { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' },
-                { num: 5, title: '특별 기도', content: '오늘의 기도 제목' }
-            ],
-            7: [
-                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
-                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
-                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
-                { num: 4, title: '가족을 위한 기도', content: '가족 모두의 신앙 성장' },
-                { num: 5, title: '감사, 회개 등', content: '감사와 회개의 기도' },
-                { num: 6, title: '지역사회를 위한 기도', content: '지역의 영적 부흥' },
-                { num: 7, title: '특별 기도', content: '오늘의 특별한 기도제목' }
-            ],
-            21: [
-                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
-                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
-                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
-                { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' }
-            ]
-        };
-        
-        function getCurrentTime() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            return `${hours}:${minutes}`;
+        if (gameData.currentDay !== undefined) {
+            gameState.currentDay = Number(gameData.currentDay) || 0;
+            gameState.collapseCount = Number(gameData.collapseCount) || 0;
+            gameState.castleHistory = gameData.castleHistory || [0];
+            // 구글 시트에서 마지막 접속일을 가져옵니다. 없으면 오늘로 세팅.
+            gameState.lastResetDate = gameData.lastResetDate || new Date().toDateString(); 
+            gameState.viewingDay = gameState.currentDay;
         }
         
-        function formatDate() {
-            const date = new Date();
-            return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
-        }
+        const partRes = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'getParticipants' }) });
+        const participants = await partRes.json();
         
-        // 기도제목 렌더링
-        function renderPrayerList() {
-            const prayerList = document.getElementById('prayerList');
-            const prayers = prayerByDays[gameState.maxHeight] || prayerByDays[21];
-            
-            prayerList.innerHTML = prayers.map(prayer => `
-                <div class="prayer-item">
-                    <div class="prayer-item-title">${prayer.num}️⃣ ${prayer.title}</div>
-                    <div>${prayer.content}</div>
-                </div>
-            `).join('');
-        }
-        
-        // 📥 Google Sheets에서 데이터 불러오기
-        async function loadGameData() {
-            try {
-                updateSaveStatus('로딩중...');
-                
-                const gameRes = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'getGame' })
-                });
-                
-                const gameData = await gameRes.json();
-                if (gameData.currentDay !== undefined) {
-                    gameState.currentDay = Number(gameData.currentDay) || 0;
-                    gameState.collapseCount = Number(gameData.collapseCount) || 0;
-                    gameState.castleHistory = gameData.castleHistory || [0];
-                    gameState.lastResetDate = new Date().toDateString();
-                    
-                    // 날짜가 달라졌으면 오늘로 이동
-                    gameState.viewingDay = gameState.currentDay;
+        if (participants && participants.length > 0) {
+            gameState.participants = gameState.participants.map(existing => {
+                const loaded = participants.find(p => p.name === existing.name);
+                if (loaded) {
+                    return {
+                        name: loaded.name,
+                        completed: loaded.completed === true || loaded.completed === 'true',
+                        completedTime: formatCleanTime(loaded.completedTime) // 더러운 시간 데이터를 깔끔하게 정리
+                    };
                 }
-                
-                const partRes = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'getParticipants' })
-                });
-                
-                const participants = await partRes.json();
-                if (participants && participants.length > 0) {
-                    // 기존 이름 순서 유지하면서 데이터 병합
-                    gameState.participants = gameState.participants.map(existing => {
-                        const loaded = participants.find(p => p.name === existing.name);
-                        if (loaded) {
-                            return {
-                                name: loaded.name,
-                                completed: loaded.completed === true || loaded.completed === 'true',
-                                completedTime: (loaded.completedTime && loaded.completedTime !== '') ? String(loaded.completedTime) : null
-                            };
-                        }
-                        return existing;
-                    });
-                }
-                
-                updateSaveStatus('로드됨 ✓');
-                renderPrayerList();
-                updateUI();
-            } catch(err) {
-                console.log('데이터 로드 실패:', err);
-                updateSaveStatus('오프라인');
-                renderPrayerList();
-                updateUI();
-            }
-        }
-        
-        // 📤 Google Sheets에 데이터 저장
-        async function saveGameData() {
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        action: 'saveGame',
-                        currentDay: gameState.currentDay,
-                        collapseCount: gameState.collapseCount,
-                        castleHistory: gameState.castleHistory
-                    })
-                });
-                
-                updateSaveStatus('저장됨 ✓');
-            } catch(err) {
-                console.log('저장 실패:', err);
-                updateSaveStatus('저장 실패');
-            }
-        }
-        
-        async function saveParticipants() {
-            try {
-                const res = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        action: 'saveParticipants',
-                        participants: gameState.participants
-                    })
-                });
-                
-                const result = await res.json();
-                if (result.status === 'ok') {
-                    updateSaveStatus('저장됨 ✓');
-                } else {
-                    updateSaveStatus('저장 실패');
-                }
-            } catch(err) {
-                console.log('참가자 저장 실패:', err);
-                updateSaveStatus('저장 실패');
-            }
-        }
-        
-        function updateSaveStatus(text) {
-            const status = document.getElementById('saveStatus');
-            if (status) {
-                status.textContent = text;
-            }
-        }
-        
-        function previousDay() {
-            if (gameState.viewingDay > 0) {
-                gameState.viewingDay--;
-                updateUI();
-            }
-        }
-        
-        function nextDay() {
-            if (gameState.viewingDay < gameState.currentDay) {
-                gameState.viewingDay = gameState.currentDay;
-                updateUI();
-            }
-        }
-        
-        function toggleParticipant(index) {
-            if (gameState.viewingDay !== gameState.currentDay) return;
-            
-            const p = gameState.participants[index];
-            if (!p.completed) {
-                p.completed = true;
-                p.completedTime = getCurrentTime();
-                
-                saveParticipants();
-                updateUI();
-                
-                if (gameState.participants.every(p => p.completed)) {
-                    completeDay();
-                }
-            }
-        }
-        
-        // 자정 기준으로 자동 진행 (중복 실행 방지)
-        function checkAndResetDay() {
-            const now = new Date();
-            const todayDateString = now.toDateString();
-            
-            // 이미 오늘 실행됐으면 스킵
-            if (lastAutoExecuteDate === todayDateString) {
-                return;
-            }
-            
-            // 저장된 날짜와 오늘 날짜가 다르면 (자정을 지났으면)
-            if (gameState.lastResetDate !== todayDateString) {
-                const allCompleted = gameState.participants.every(p => p.completed);
-                
-                if (allCompleted) {
-                    autoCompleteDay();
-                } else {
-                    autoCollapseDay();
-                }
-                
-                gameState.lastResetDate = todayDateString;
-                lastAutoExecuteDate = todayDateString;
-            }
-        }
-        
-        function autoCompleteDay() {
-            if (gameState.currentDay < gameState.maxHeight) {
-                gameState.currentDay++;
-                gameState.viewingDay = gameState.currentDay;
-                gameState.castleHeight = gameState.currentDay;
-                gameState.castleHistory.push(gameState.currentDay);
-                
-                gameState.participants.forEach(p => {
-                    p.completed = false;
-                    p.completedTime = null;
-                });
-                
-                const notification = document.getElementById('notificationArea');
-                notification.innerHTML = `
-                    <div class="notification success">
-                        🎉 모두 완료! 모래성이 한층 높아졌습니다! (${gameState.currentDay}/${gameState.maxHeight})
-                    </div>
-                `;
-                
-                setTimeout(() => notification.innerHTML = '', 5000);
-                
-                saveGameData();
-                saveParticipants();
-                updateUI();
-            }
-        }
-        
-        function autoCollapseDay() {
-            gameState.collapseCount++;
-            gameState.currentDay = 0;
-            gameState.viewingDay = 0;
-            gameState.castleHeight = 0;
-            gameState.castleHistory = [0];
-            
-            gameState.participants.forEach(p => {
-                p.completed = false;
-                p.completedTime = null;
+                return existing;
             });
-            
-            const notification = document.getElementById('notificationArea');
-            notification.innerHTML = `
-                <div class="notification collapse">
-                    ⚠️ 조건 미충족! 모래성이 무너졌습니다...<br/>
-                    <span style="font-size: 12px;">D+1로 리셋됩니다. 화이팅! 💪</span>
-                </div>
-            `;
-            
-            setTimeout(() => notification.innerHTML = '', 5000);
-            
-            saveGameData();
-            saveParticipants();
-            updateUI();
         }
         
-        function completeDay() {
-            const notification = document.getElementById('notificationArea');
-            notification.innerHTML = `
-                <div class="notification success">
-                    ✅ 오늘 모두 완료했습니다!<br/>
-                    <span style="font-size: 12px;">자정에 자동으로 진행됩니다.</span>
-                </div>
-            `;
-            
-            setTimeout(() => notification.innerHTML = '', 5000);
+        updateSaveStatus('로드됨 ✓');
+        
+        // 🚨 핵심: 데이터를 다 불러온 후, 날짜가 바뀌었는지(자정 통과) 확인
+        checkDateAndProcessReset(); 
+
+    } catch(err) {
+        console.log('데이터 로드 실패:', err);
+        updateSaveStatus('오프라인');
+        renderPrayerList();
+        updateUI();
+    }
+}
+
+// 자정(24시)을 넘겼는지 체크하는 함수 (타이머가 아닌 접속 시 체크 방식)
+function checkDateAndProcessReset() {
+    const todayStr = new Date().toDateString();
+    
+    // 마지막 저장된 날짜와 오늘 날짜가 다르다면 (하루가 지났다면)
+    if (gameState.lastResetDate !== todayStr) {
+        const allCompleted = gameState.participants.every(p => p.completed);
+        
+        if (allCompleted) {
+            autoCompleteDay(); // 모두 했으면 D+1
+        } else {
+            autoCollapseDay(); // 한명이라도 안했으면 리셋
         }
         
-        function updateCastleImage() {
-            const castleImage = document.getElementById('castleImage');
-            if (!castleImage) return;
-            
-            let displayHeight;
-            if (gameState.viewingDay === gameState.currentDay) {
-                const completed = gameState.participants.filter(p => p.completed).length;
-                gameState.castleHeight = gameState.currentDay + (completed / gameState.participants.length);
-                displayHeight = gameState.castleHeight;
-            } else {
-                displayHeight = gameState.castleHistory[gameState.viewingDay] || 0;
-            }
-            
-            const percentageToShow = (displayHeight / gameState.maxHeight) * 100;
-            castleImage.style.clipPath = `inset(${100 - percentageToShow}% 0 0 0)`;
+        // 기준일을 오늘로 갱신
+        gameState.lastResetDate = todayStr;
+        saveGameData();
+    } else {
+        // 날짜가 안 바뀌었으면 그냥 UI만 그리기
+        renderPrayerList();
+        updateUI();
+    }
+}
+
+async function saveGameData() {
+    try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'saveGame',
+                currentDay: gameState.currentDay,
+                collapseCount: gameState.collapseCount,
+                castleHistory: gameState.castleHistory,
+                lastResetDate: gameState.lastResetDate // 접속일도 함께 저장
+            })
+        });
+        updateSaveStatus('저장됨 ✓');
+    } catch(err) {
+        updateSaveStatus('저장 실패');
+    }
+}
+
+async function saveParticipants() {
+    try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'saveParticipants', participants: gameState.participants })
+        });
+        const result = await res.json();
+        if (result.status === 'ok') updateSaveStatus('저장됨 ✓');
+        else updateSaveStatus('저장 실패');
+    } catch(err) {
+        updateSaveStatus('저장 실패');
+    }
+}
+
+function updateSaveStatus(text) {
+    const status = document.getElementById('saveStatus');
+    if (status) status.textContent = text;
+}
+
+// 이전/다음 화살표 로직 수정 (문제 1번 해결)
+function previousDay() {
+    if (gameState.viewingDay > 0) {
+        gameState.viewingDay--;
+        updateUI();
+    }
+}
+
+function nextDay() {
+    if (gameState.viewingDay < gameState.currentDay) {
+        gameState.viewingDay++;
+        updateUI();
+    }
+}
+
+function toggleParticipant(index) {
+    if (gameState.viewingDay !== gameState.currentDay) return;
+    
+    const p = gameState.participants[index];
+    if (!p.completed) {
+        p.completed = true;
+        p.completedTime = getCurrentTime();
+        
+        saveParticipants();
+        updateUI();
+        
+        if (gameState.participants.every(p => p.completed)) {
+            completeDay();
         }
+    }
+}
+
+function autoCompleteDay() {
+    if (gameState.currentDay < gameState.maxHeight) {
+        gameState.currentDay++;
+        gameState.viewingDay = gameState.currentDay;
+        gameState.castleHeight = gameState.currentDay;
+        gameState.castleHistory.push(gameState.currentDay);
         
-        function updateUI() {
-            const completed = gameState.participants.filter(p => p.completed).length;
-            const total = gameState.participants.length;
-            const percent = Math.round((completed / total) * 100);
-            
-            document.getElementById('collapseCount').textContent = gameState.collapseCount;
-            document.getElementById('todayDate').textContent = formatDate();
-            document.getElementById('ddayNumber').textContent = gameState.currentDay;
-            document.getElementById('dayLabel').textContent = `D+${gameState.viewingDay}`;
-            
-            document.getElementById('progressTitle').textContent = `모래성 완성도 (${gameState.maxHeight}일)`;
-            
-            if (gameState.viewingDay === gameState.currentDay) {
-                document.getElementById('completedCount').textContent = completed;
-                document.getElementById('pendingCount').textContent = total - completed;
-                document.getElementById('successRate').textContent = percent + '%';
-            } else {
-                document.getElementById('completedCount').textContent = total;
-                document.getElementById('pendingCount').textContent = '0';
-                document.getElementById('successRate').textContent = '100%';
-            }
-            
-            document.getElementById('progressPercent').textContent = Math.round((gameState.viewingDay / gameState.maxHeight) * 100) + '%';
-            document.getElementById('progressFill').style.width = (gameState.viewingDay / gameState.maxHeight * 100) + '%';
-            
-            // 왼쪽 버튼: castleHistory가 있으면 활성화
-            const hasHistory = gameState.castleHistory && gameState.castleHistory.length > 1;
-            document.getElementById('prevBtn').disabled = gameState.viewingDay === 0 || !hasHistory;
-            document.getElementById('nextBtn').disabled = gameState.viewingDay >= gameState.currentDay;
-            
-            updateCastleImage();
-            
-            const list = document.getElementById('participantsList');
-            list.innerHTML = gameState.participants.map((p, idx) => `
-                <div class="participant-card ${p.completed ? 'completed' : 'pending'} ${gameState.viewingDay !== gameState.currentDay ? 'disabled' : ''}" 
-                     onclick="toggleParticipant(${idx})">
-                    <div class="participant-name">${p.name}</div>
-                    <div class="participant-status">${p.completed ? '✓ 완료' : '○ 대기'}</div>
-                    ${p.completedTime ? `<div class="completed-time">${p.completedTime}</div>` : ''}
-                </div>
-            `).join('');
-        }
+        // 참가자 상태 초기화
+        gameState.participants.forEach(p => { p.completed = false; p.completedTime = null; });
         
-        // 자정(00:00)마다 체크하도록 수정
-        function scheduleNextCheck() {
-            const now = new Date();
-            const tomorrow = new Date(now);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0, 0, 1, 0);  // 내일 자정 0시 0분 1초
-            
-            const timeUntilMidnight = tomorrow - now;
-            
-            setTimeout(() => {
-                checkAndResetDay();
-                scheduleNextCheck();  // 다음 자정 예약
-            }, timeUntilMidnight);
-        }
-        
-        // 앱 시작 시 첫 번째 체크 스케줄 설정
-        scheduleNextCheck();
-        
-        document.getElementById('todayDate').textContent = formatDate();
-        
-        // 앱 시작 시 Google Sheets에서 데이터 로드
-        loadGameData();
-    </script>
-</body>
-</html>
+        showNotification(`🎉 성공! 모래성이 한층 높아졌습니다! (${gameState.currentDay}/${gameState.maxHeight})`, 'success');
+        saveParticipants();
+        updateUI();
+    }
+}
+
+function autoCollapseDay() {
+    gameState.collapseCount++;
+    gameState.currentDay = 0;
+    gameState.viewingDay = 0;
+    gameState.castleHeight = 0;
+    gameState.castleHistory = [0];
+    
+    // 참가자 상태 초기화
+    gameState.participants.forEach(p => { p.completed = false; p.completedTime = null; });
+    
+    showNotification(`⚠️ 조건 미충족! 모래성이 무너졌습니다...<br/><span style="font-size: 12px;">D+0으로 리셋됩니다. 화이팅! 💪</span>`, 'collapse');
+    saveParticipants();
+    updateUI();
+}
+
+function completeDay() {
+    showNotification(`✅ 오늘 12명 모두 완료했습니다!<br/><span style="font-size: 12px;">내일 접속 시 자동으로 성이 한 층 올라갑니다.</span>`, 'success');
+}
+
+function showNotification(message, type) {
+    const notification = document.getElementById('notificationArea');
+    notification.innerHTML = `<div class="notification ${type}">${message}</div>`;
+    setTimeout(() => notification.innerHTML = '', 5000);
+}
+
+function updateCastleImage() {
+    const castleImage = document.getElementById('castleImage');
+    if (!castleImage) return;
+    
+    let displayHeight;
+    if (gameState.viewingDay === gameState.currentDay) {
+        const completed = gameState.participants.filter(p => p.completed).length;
+        gameState.castleHeight = gameState.currentDay + (completed / gameState.participants.length);
+        displayHeight = gameState.castleHeight;
+    } else {
+        displayHeight = gameState.castleHistory[gameState.viewingDay] || gameState.viewingDay;
+    }
+    
+    const percentageToShow = (displayHeight / gameState.maxHeight) * 100;
+    castleImage.style.clipPath = `inset(${100 - percentageToShow}% 0 0 0)`;
+}
+
+function updateUI() {
+    const completed = gameState.participants.filter(p => p.completed).length;
+    const total = gameState.participants.length;
+    const percent = Math.round((completed / total) * 100);
+    
+    document.getElementById('collapseCount').textContent = gameState.collapseCount;
+    document.getElementById('todayDate').textContent = formatDate();
+    document.getElementById('ddayNumber').textContent = gameState.currentDay;
+    document.getElementById('dayLabel').textContent = `D+${gameState.viewingDay}`;
+    
+    document.getElementById('progressTitle').textContent = `모래성 완성도 (${gameState.maxHeight}일)`;
+    
+    if (gameState.viewingDay === gameState.currentDay) {
+        document.getElementById('completedCount').textContent = completed;
+        document.getElementById('pendingCount').textContent = total - completed;
+        document.getElementById('successRate').textContent = percent + '%';
+    } else {
+        // 과거 날짜를 볼 때
+        document.getElementById('completedCount').textContent = total;
+        document.getElementById('pendingCount').textContent = '0';
+        document.getElementById('successRate').textContent = '100%';
+    }
+    
+    document.getElementById('progressPercent').textContent = Math.round((gameState.viewingDay / gameState.maxHeight) * 100) + '%';
+    document.getElementById('progressFill').style.width = (gameState.viewingDay / gameState.maxHeight * 100) + '%';
+    
+    // 왼쪽/오른쪽 버튼 활성화 조건 (복잡한 조건 제거하고 직관적으로 변경)
+    document.getElementById('prevBtn').disabled = gameState.viewingDay <= 0;
+    document.getElementById('nextBtn').disabled = gameState.viewingDay >= gameState.currentDay;
+    
+    updateCastleImage();
+    
+    const list = document.getElementById('participantsList');
+    list.innerHTML = gameState.participants.map((p, idx) => `
+        <div class="participant-card ${p.completed ? 'completed' : 'pending'} ${gameState.viewingDay !== gameState.currentDay ? 'disabled' : ''}" 
+             onclick="toggleParticipant(${idx})">
+            <div class="participant-name">${p.name}</div>
+            <div class="participant-status">${p.completed ? '✓ 완료' : '○ 대기'}</div>
+            ${p.completedTime ? `<div class="completed-time">${p.completedTime}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+// 앱 시작 시 Google Sheets에서 데이터 로드 (타이머 제거)
+document.getElementById('todayDate').textContent = formatDate();
+loadGameData();
