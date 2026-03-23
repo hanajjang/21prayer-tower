@@ -24,7 +24,6 @@
             min-height: 100vh;
         }
         
-        /* 상단 헤더 */
         .header {
             display: flex;
             justify-content: space-between;
@@ -64,7 +63,6 @@
             color: #1e40af;
         }
         
-        /* 메인 컨텐츠 */
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -72,7 +70,6 @@
             margin: 2rem 0;
         }
         
-        /* 왼쪽: 게임 섹션 */
         .game-section {
             display: flex;
             flex-direction: column;
@@ -82,7 +79,7 @@
         .game-controls {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.5rem;
             justify-content: center;
         }
         
@@ -90,13 +87,13 @@
             background: #f3f4f6;
             border: 1px solid #d1d5db;
             border-radius: 8px;
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 28px;
+            font-size: 20px;
             transition: all 0.3s ease;
             flex-shrink: 0;
         }
@@ -118,7 +115,7 @@
             border-radius: 16px;
             position: relative;
             width: 100%;
-            height: 400px;
+            aspect-ratio: 16 / 9;
             overflow: hidden;
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             display: flex;
@@ -135,26 +132,21 @@
             justify-content: center;
         }
         
-        .castle-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center;
-        }
-        
         .day-label {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.3);
-            color: white;
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
+            display: none;
         }
         
-        /* 진행률 */
+        .save-status {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 11px;
+            color: #666;
+            background: rgba(255,255,255,0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
         .progress-section {
             margin: 0;
         }
@@ -181,14 +173,12 @@
             transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         
-        /* 오른쪽: 기도제목 & 참가자 & 통계 */
         .right-section {
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
         }
         
-        /* 기도제목 섹션 */
         .prayer-section {
             background: #f9fafb;
             border-radius: 12px;
@@ -225,7 +215,6 @@
             font-size: 10px;
         }
         
-        /* 통계 */
         .stats {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -252,7 +241,6 @@
             font-weight: 500;
         }
         
-        /* 참가자 섹션 */
         .participants-section {
             background: #f9fafb;
             border-radius: 12px;
@@ -331,7 +319,6 @@
             font-weight: 600;
         }
         
-        /* 알림 */
         .notification {
             padding: 1rem;
             border-radius: 12px;
@@ -378,7 +365,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- 상단 헤더 -->
         <div class="header">
             <div class="collapse-counter">
                 <span>⚠️무너짐</span>
@@ -394,26 +380,47 @@
             </div>
         </div>
         
-        <!-- 메인 컨텐츠 -->
         <div class="main-content">
-            <!-- 왼쪽: 게임 섹션 -->
             <div class="game-section">
-                <!-- 게임 컨트롤 -->
                 <div class="game-controls">
                     <button class="nav-button" id="prevBtn" onclick="previousDay()">←</button>
                     <div class="game-canvas">
                         <div class="canvas-content">
-                            <img id="castleImage" 
-                                 src="tower.png" 
-                                 alt="모래성" 
-                                 class="castle-image">
+                            <svg id="castleSvg" viewBox="0 0 500 300" preserveAspectRatio="xMidYMid meet">
+                                <defs>
+                                    <linearGradient id="sandGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#D4A574;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#8B7355;stop-opacity:1" />
+                                    </linearGradient>
+                                </defs>
+                                
+                                <rect width="500" height="150" fill="#87CEEB"/>
+                                <ellipse cx="250" cy="280" rx="250" ry="40" fill="#F4A460" opacity="0.3"/>
+                                
+                                <g id="castleBlocks">
+                                    <rect x="100" y="260" width="300" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="120" y="240" width="260" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="140" y="220" width="220" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="160" y="200" width="180" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="180" y="180" width="140" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="200" y="160" width="100" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="220" y="140" width="60" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="230" y="120" width="40" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="235" y="100" width="30" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="240" y="80" width="20" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="235" y="60" width="30" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <rect x="240" y="40" width="20" height="20" fill="url(#sandGradient)" stroke="#8B7355" stroke-width="1"/>
+                                    <line x1="250" y1="40" x2="250" y2="0" stroke="#8B4513" stroke-width="3"/>
+                                    <polygon points="250,0 270,10 265,20" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+                                </g>
+                            </svg>
                             <div class="day-label" id="dayLabel">D+0</div>
+                            <div class="save-status" id="saveStatus">로딩중...</div>
                         </div>
                     </div>
                     <button class="nav-button" id="nextBtn" onclick="nextDay()" disabled>→</button>
                 </div>
                 
-                <!-- 진행률 -->
                 <div class="progress-section">
                     <div class="progress-label">
                         <span>모래성 완성도</span>
@@ -425,9 +432,7 @@
                 </div>
             </div>
             
-            <!-- 오른쪽: 기도제목, 통계, 참가자 -->
             <div class="right-section">
-                <!-- 기도제목 -->
                 <div class="prayer-section">
                     <div class="prayer-title">📿 기도제목</div>
                     <div class="prayer-list">
@@ -450,7 +455,6 @@
                     </div>
                 </div>
                 
-                <!-- 통계 -->
                 <div class="stats">
                     <div class="stat-card">
                         <div class="stat-number" id="completedCount">0</div>
@@ -466,7 +470,6 @@
                     </div>
                 </div>
                 
-                <!-- 참가자 -->
                 <div class="participants-section">
                     <div class="section-title">오늘의 참가자</div>
                     <div class="participants-grid" id="participantsList"></div>
@@ -474,11 +477,13 @@
             </div>
         </div>
         
-        <!-- 알림 -->
         <div id="notificationArea"></div>
     </div>
 
     <script>
+        // 🔑 Google Apps Script 배포 URL (여기에 입력!)
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/d/AKfycbwQiVxWkrjbQGwPutCwBNkH_WIWbroB8WN1PP-7UtMOTiSbyqOb5f0aJ8MItDRjq2Fdcg/userweb';
+        
         let gameState = {
             currentDay: 0,
             viewingDay: 0,
@@ -515,6 +520,83 @@
             return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
         }
         
+        // 📥 Google Sheets에서 데이터 불러오기
+        async function loadGameData() {
+            try {
+                updateSaveStatus('로딩중...');
+                
+                const gameRes = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'getGame' })
+                });
+                
+                const gameData = await gameRes.json();
+                if (gameData.currentDay !== undefined) {
+                    gameState.currentDay = gameData.currentDay;
+                    gameState.collapseCount = gameData.collapseCount;
+                    gameState.castleHistory = gameData.castleHistory || [0];
+                }
+                
+                const partRes = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'getParticipants' })
+                });
+                
+                const participants = await partRes.json();
+                if (participants && participants.length > 0) {
+                    gameState.participants = participants;
+                }
+                
+                updateSaveStatus('로드됨 ✓');
+                updateUI();
+            } catch(err) {
+                console.log('데이터 로드 실패:', err);
+                updateSaveStatus('오프라인');
+                updateUI();
+            }
+        }
+        
+        // 📤 Google Sheets에 데이터 저장
+        async function saveGameData() {
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'saveGame',
+                        currentDay: gameState.currentDay,
+                        collapseCount: gameState.collapseCount,
+                        castleHistory: gameState.castleHistory
+                    })
+                });
+                
+                updateSaveStatus('저장됨 ✓');
+            } catch(err) {
+                console.log('저장 실패:', err);
+                updateSaveStatus('저장 실패');
+            }
+        }
+        
+        async function saveParticipants() {
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'saveParticipants',
+                        participants: gameState.participants
+                    })
+                });
+            } catch(err) {
+                console.log('참가자 저장 실패:', err);
+            }
+        }
+        
+        function updateSaveStatus(text) {
+            const status = document.getElementById('saveStatus');
+            if (status) {
+                status.textContent = text;
+            }
+        }
+        
         function previousDay() {
             if (gameState.viewingDay > 0) {
                 gameState.viewingDay--;
@@ -536,6 +618,8 @@
             if (!p.completed) {
                 p.completed = true;
                 p.completedTime = getCurrentTime();
+                
+                saveParticipants();
                 updateUI();
                 
                 if (gameState.participants.every(p => p.completed)) {
@@ -582,6 +666,9 @@
                 `;
                 
                 setTimeout(() => notification.innerHTML = '', 5000);
+                
+                saveGameData();
+                saveParticipants();
                 updateUI();
             }
         }
@@ -607,6 +694,9 @@
             `;
             
             setTimeout(() => notification.innerHTML = '', 5000);
+            
+            saveGameData();
+            saveParticipants();
             updateUI();
         }
         
@@ -623,23 +713,31 @@
         }
         
         function updateCastleImage() {
-            const castleImage = document.getElementById('castleImage');
-            if (!castleImage) return;
+            const castleBlocks = document.getElementById('castleBlocks');
+            if (!castleBlocks) return;
             
             let displayHeight;
             if (gameState.viewingDay === gameState.currentDay) {
-                // 오늘: 기본 높이 + 완료한 사람수/12
                 const completed = gameState.participants.filter(p => p.completed).length;
                 gameState.castleHeight = gameState.currentDay + (completed / 12);
                 displayHeight = gameState.castleHeight;
             } else {
-                // 과거: 저장된 높이
                 displayHeight = gameState.castleHistory[gameState.viewingDay] || 0;
             }
             
-            // 21일을 기준으로 이미지 클립 (아래에서부터 표시)
-            const percentageToShow = (displayHeight / gameState.maxHeight) * 100;
-            castleImage.style.clipPath = `inset(${100 - percentageToShow}% 0 0 0)`;
+            const blockElements = castleBlocks.querySelectorAll('rect[y]');
+            const flagAndPole = castleBlocks.querySelectorAll('line, polygon');
+            
+            const totalBlocks = 12;
+            const blocksToShow = Math.ceil((displayHeight / gameState.maxHeight) * totalBlocks);
+            
+            blockElements.forEach((block, index) => {
+                block.style.opacity = index < blocksToShow ? '1' : '0';
+            });
+            
+            flagAndPole.forEach(element => {
+                element.style.opacity = blocksToShow > 0 ? '1' : '0';
+            });
         }
         
         function updateUI() {
@@ -684,7 +782,9 @@
         setInterval(() => checkAndResetDay(), 60000);
         
         document.getElementById('todayDate').textContent = formatDate();
-        updateUI();
+        
+        // 앱 시작 시 Google Sheets에서 데이터 로드
+        loadGameData();
     </script>
 </body>
 </html>
