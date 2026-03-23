@@ -449,17 +449,16 @@
 
     <script>
         // 🔑 Google Apps Script 배포 URL
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyScihdKTtJZf6Bq5X3PFNqxQGg430FyMXXZSWqG434T0ziMp3-d1HWX3MbUUKou4ML2g/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuh1S5UpRBvU5fuk8NA1T3IQzFx5hXR-J3_KxQ08ocsd_Lois3wbAnF2zcCUAdgbfKfA/exec';
         
         // 중복 실행 방지
-        let lastAutoExecuteTime = 0;
-        const AUTO_EXECUTION_INTERVAL = 60000; // 1분
+        let lastAutoExecuteDate = null;
         
         let gameState = {
             currentDay: 0,
             viewingDay: 0,
             castleHeight: 0,
-            lastResetTime: new Date(),
+            lastResetDate: new Date().toDateString(),
             participants: [
                 { name: '정지양', completed: false, completedTime: null },
                 { name: '이누리', completed: false, completedTime: null },
@@ -545,7 +544,10 @@
                     gameState.currentDay = Number(gameData.currentDay) || 0;
                     gameState.collapseCount = Number(gameData.collapseCount) || 0;
                     gameState.castleHistory = gameData.castleHistory || [0];
-                    gameState.lastResetTime = new Date();
+                    gameState.lastResetDate = new Date().toDateString();
+                    
+                    // 날짜가 달라졌으면 오늘로 이동
+                    gameState.viewingDay = gameState.currentDay;
                 }
                 
                 const partRes = await fetch(GOOGLE_SCRIPT_URL, {
@@ -660,25 +662,29 @@
             }
         }
         
-        // 중복 실행 방지 기능 추가
+        // 자정 기준으로 자동 진행 (중복 실행 방지)
         function checkAndResetDay() {
-            const now = Date.now();
-            const timeSinceLastExecution = now - lastAutoExecuteTime;
+            const now = new Date();
+            const todayDateString = now.toDateString();
             
-            // 1분 이내에 이미 실행됐으면 스킵
-            if (timeSinceLastExecution < AUTO_EXECUTION_INTERVAL) {
+            // 이미 오늘 실행됐으면 스킵
+            if (lastAutoExecuteDate === todayDateString) {
                 return;
             }
             
-            const allCompleted = gameState.participants.every(p => p.completed);
-            
-            if (allCompleted) {
-                autoCompleteDay();
-            } else {
-                autoCollapseDay();
+            // 저장된 날짜와 오늘 날짜가 다르면 (자정을 지났으면)
+            if (gameState.lastResetDate !== todayDateString) {
+                const allCompleted = gameState.participants.every(p => p.completed);
+                
+                if (allCompleted) {
+                    autoCompleteDay();
+                } else {
+                    autoCollapseDay();
+                }
+                
+                gameState.lastResetDate = todayDateString;
+                lastAutoExecuteDate = todayDateString;
             }
-            
-            lastAutoExecuteTime = now;
         }
         
         function autoCompleteDay() {
@@ -740,7 +746,7 @@
             notification.innerHTML = `
                 <div class="notification success">
                     ✅ 오늘 모두 완료했습니다!<br/>
-                    <span style="font-size: 12px;">24시간 후 자동으로 진행됩니다.</span>
+                    <span style="font-size: 12px;">자정에 자동으로 진행됩니다.</span>
                 </div>
             `;
             
@@ -807,8 +813,8 @@
             `).join('');
         }
         
-        // 1분마다 체크 (중복 실행 방지됨)
-        setInterval(() => checkAndResetDay(), 60000);
+        // 24시간마다 체크 (자정 기준)
+        setInterval(() => checkAndResetDay(), 24 * 60 * 60 * 1000);
         
         document.getElementById('todayDate').textContent = formatDate();
         
