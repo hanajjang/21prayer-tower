@@ -640,7 +640,7 @@
         
         function nextDay() {
             if (gameState.viewingDay < gameState.currentDay) {
-                gameState.viewingDay++;
+                gameState.viewingDay = gameState.currentDay;
                 updateUI();
             }
         }
