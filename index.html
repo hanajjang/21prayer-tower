@@ -449,7 +449,11 @@
 
     <script>
         // 🔑 Google Apps Script 배포 URL
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXcgTftLqj7I7ZplFHrSKQbiVRBtSQcsPAx5XsNQopIVWGeeG04KhVXxx6pfwjg_M/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyScihdKTtJZf6Bq5X3PFNqxQGg430FyMXXZSWqG434T0ziMp3-d1HWX3MbUUKou4ML2g/exec';
+        
+        // 중복 실행 방지
+        let lastAutoExecuteTime = 0;
+        const AUTO_EXECUTION_INTERVAL = 60000; // 1분
         
         let gameState = {
             currentDay: 0,
@@ -538,9 +542,10 @@
                 
                 const gameData = await gameRes.json();
                 if (gameData.currentDay !== undefined) {
-                    gameState.currentDay = gameData.currentDay;
-                    gameState.collapseCount = gameData.collapseCount;
+                    gameState.currentDay = Number(gameData.currentDay) || 0;
+                    gameState.collapseCount = Number(gameData.collapseCount) || 0;
                     gameState.castleHistory = gameData.castleHistory || [0];
+                    gameState.lastResetTime = new Date();
                 }
                 
                 const partRes = await fetch(GOOGLE_SCRIPT_URL, {
@@ -550,14 +555,14 @@
                 
                 const participants = await partRes.json();
                 if (participants && participants.length > 0) {
-                    // 기존 이름 순서 유지하면서 Google Sheets 데이터와 병합
+                    // 기존 이름 순서 유지하면서 데이터 병합
                     gameState.participants = gameState.participants.map(existing => {
                         const loaded = participants.find(p => p.name === existing.name);
                         if (loaded) {
                             return {
                                 name: loaded.name,
                                 completed: loaded.completed === true || loaded.completed === 'true',
-                                completedTime: loaded.completedTime || null
+                                completedTime: (loaded.completedTime && loaded.completedTime !== '') ? String(loaded.completedTime) : null
                             };
                         }
                         return existing;
@@ -655,22 +660,25 @@
             }
         }
         
+        // 중복 실행 방지 기능 추가
         function checkAndResetDay() {
-            const now = new Date();
-            const timeDiff = now - gameState.lastResetTime;
-            const hoursPassed = timeDiff / (1000 * 60 * 60);
+            const now = Date.now();
+            const timeSinceLastExecution = now - lastAutoExecuteTime;
             
-            if (hoursPassed >= 24) {
-                const allCompleted = gameState.participants.every(p => p.completed);
-                
-                if (allCompleted) {
-                    autoCompleteDay();
-                } else {
-                    autoCollapseDay();
-                }
-                
-                gameState.lastResetTime = new Date();
+            // 1분 이내에 이미 실행됐으면 스킵
+            if (timeSinceLastExecution < AUTO_EXECUTION_INTERVAL) {
+                return;
             }
+            
+            const allCompleted = gameState.participants.every(p => p.completed);
+            
+            if (allCompleted) {
+                autoCompleteDay();
+            } else {
+                autoCollapseDay();
+            }
+            
+            lastAutoExecuteTime = now;
         }
         
         function autoCompleteDay() {
@@ -781,9 +789,10 @@
             document.getElementById('progressPercent').textContent = Math.round((gameState.viewingDay / gameState.maxHeight) * 100) + '%';
             document.getElementById('progressFill').style.width = (gameState.viewingDay / gameState.maxHeight * 100) + '%';
             
-            const maxViewableDay = gameState.castleHistory.length - 1;
-            document.getElementById('prevBtn').disabled = gameState.viewingDay === 0;
-            document.getElementById('nextBtn').disabled = gameState.viewingDay >= maxViewableDay;
+            // 왼쪽 버튼: castleHistory가 있으면 활성화
+            const hasHistory = gameState.castleHistory && gameState.castleHistory.length > 1;
+            document.getElementById('prevBtn').disabled = gameState.viewingDay === 0 || !hasHistory;
+            document.getElementById('nextBtn').disabled = gameState.viewingDay >= gameState.currentDay;
             
             updateCastleImage();
             
@@ -798,6 +807,7 @@
             `).join('');
         }
         
+        // 1분마다 체크 (중복 실행 방지됨)
         setInterval(() => checkAndResetDay(), 60000);
         
         document.getElementById('todayDate').textContent = formatDate();
