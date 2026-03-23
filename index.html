@@ -404,20 +404,11 @@
                     <button class="nav-button" id="prevBtn" onclick="previousDay()">←</button>
                     <div class="game-canvas">
                         <div class="canvas-content">
-                            <svg id="castleSvg" width="200" height="300" viewBox="0 0 200 300" style="max-width: 100%; max-height: 100%;">
-                                <defs>
-                                    <clipPath id="castleClip">
-                                        <rect x="0" y="0" width="200" height="300" />
-                                    </clipPath>
-                                </defs>
-                                <!-- 파도 -->
-                                <g opacity="0.3">
-                                    <path d="M0,260 Q50,250 100,260 T200,260 L200,300 L0,300 Z" fill="#87ceeb"/>
-                                    <path d="M0,275 Q50,265 100,275 T200,275 L200,300 L0,300 Z" fill="#64b5f6"/>
-                                </g>
-                                <!-- 모래성 (동적으로 생성됨) -->
-                                <g id="castleBlocks" clip-path="url(#castleClip)"></g>
-                            </svg>
+                            <!-- 방법: 아래의 src에 이미지 URL 또는 Base64 입력 -->
+                            <img id="castleImage" 
+                                 src="data:image/png;base64,[BASE64_코드_여기_붙여넣기]" 
+                                 alt="모래성" 
+                                 style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));">
                             <div class="day-label" id="dayLabel">D+0</div>
                         </div>
                     </div>
@@ -602,12 +593,13 @@
             const now = new Date();
             const lastReset = gameState.lastResetTime;
             
-            // 자정 이후인지 확인 (24시간 경과)
+            // 테스트용: 1분 (60초) 경과 확인
+            // 실제 배포: 24시간 (86400000ms) 경과 확인
             const timeDiff = now - lastReset;
-            const hoursPassed = timeDiff / (1000 * 60 * 60);
+            const minutesPassed = timeDiff / (1000 * 60); // 분 단위
             
-            // 24시간이 지났을 때만 처리
-            if (hoursPassed >= 24) {
+            // 테스트: 1분 이후 체크
+            if (minutesPassed >= 1) {
                 // 모든 참가자가 완료했는가?
                 const allCompleted = gameState.participants.every(p => p.completed);
                 
@@ -619,7 +611,7 @@
                     autoCollapseDay();
                 }
                 
-                // 중요: lastResetTime을 지금으로 업데이트하여 다시 24시간을 센다
+                // 중요: lastResetTime을 지금으로 업데이트하여 다시 1분을 센다
                 gameState.lastResetTime = new Date();
             }
         }
@@ -704,7 +696,25 @@
             updateUI();
         }
         
-        // 모래성 그리기 (보고 있는 날짜의 모래성만 표시)
+        // 모래성 이미지 업데이트 (높이에 따른 opacity 또는 transform)
+        function updateCastleImage() {
+            const castleImage = document.getElementById('castleImage');
+            if (!castleImage) return;
+            
+            // 보고 있는 날짜의 높이 계산
+            let displayHeight;
+            if (gameState.viewingDay === gameState.currentDay) {
+                displayHeight = gameState.castleHeight;
+            } else {
+                displayHeight = gameState.castleHistory[gameState.viewingDay] || 0;
+            }
+            
+            // 높이에 따른 스케일 조정 (선택사항)
+            // 높이가 높을수록 이미지가 조금 더 커짐 (0% ~ 100%)
+            const scale = 0.7 + (displayHeight / gameState.maxHeight) * 0.3;
+            castleImage.style.transform = `scale(${scale})`;
+        }
+        
         function drawCastle() {
             const castleBlocks = document.getElementById('castleBlocks');
             castleBlocks.innerHTML = '';
@@ -807,8 +817,8 @@
             document.getElementById('prevBtn').disabled = gameState.viewingDay === 0;
             document.getElementById('nextBtn').disabled = gameState.viewingDay === gameState.currentDay;
             
-            // 모래성 그리기
-            drawCastle();
+            // 모래성 높이에 따른 이미지 opacity 조정 (선택사항)
+            updateCastleImage();
             
             // 참가자 카드
             const list = document.getElementById('participantsList');
