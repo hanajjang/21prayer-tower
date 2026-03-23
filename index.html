@@ -407,7 +407,7 @@
                 
                 <div class="progress-section">
                     <div class="progress-label">
-                        <span>모래성 완성도</span>
+                        <span id="progressTitle">모래성 완성도</span>
                         <span id="progressPercent">0%</span>
                     </div>
                     <div class="progress-bar">
@@ -419,24 +419,7 @@
             <div class="right-section">
                 <div class="prayer-section">
                     <div class="prayer-title">📿 기도제목</div>
-                    <div class="prayer-list">
-                        <div class="prayer-item">
-                            <div class="prayer-item-title">1️⃣ 선생님을 위한 기도</div>
-                            <div>6월 전까지 재판을 위해</div>
-                        </div>
-                        <div class="prayer-item">
-                            <div class="prayer-item-title">2️⃣ 청미부서를 위한 기도</div>
-                            <div>팀원, 생명기도, 주의 뜻</div>
-                        </div>
-                        <div class="prayer-item">
-                            <div class="prayer-item-title">3️⃣ 나의 사명과 차원</div>
-                            <div>사명과 차원을 높이기 위해</div>
-                        </div>
-                        <div class="prayer-item">
-                            <div class="prayer-item-title">4️⃣ 감사, 회개 등</div>
-                            <div>감사와 회개의 기도</div>
-                        </div>
-                    </div>
+                    <div class="prayer-list" id="prayerList"></div>
                 </div>
                 
                 <div class="stats">
@@ -465,7 +448,7 @@
     </div>
 
     <script>
-        // 🔑 Google Apps Script 배포 URL (정확한 배포 ID 입력됨)
+        // 🔑 Google Apps Script 배포 URL
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwuh1S5UpRBvU5fuk8NA1T3IQzFx5hXR-J3_KxQ08ocsd_Lois3wbAnF2zcCUAdgbfKfA/exec';
         
         let gameState = {
@@ -492,6 +475,32 @@
             castleHistory: [0]
         };
         
+        // 기도제목 (Config maxHeight에 따라 자동 선택)
+        const prayerByDays = {
+            5: [
+                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
+                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
+                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
+                { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' },
+                { num: 5, title: '특별 기도', content: '오늘의 기도 제목' }
+            ],
+            7: [
+                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
+                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
+                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
+                { num: 4, title: '가족을 위한 기도', content: '가족 모두의 신앙 성장' },
+                { num: 5, title: '감사, 회개 등', content: '감사와 회개의 기도' },
+                { num: 6, title: '지역사회를 위한 기도', content: '지역의 영적 부흥' },
+                { num: 7, title: '특별 기도', content: '오늘의 특별한 기도제목' }
+            ],
+            21: [
+                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
+                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
+                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
+                { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' }
+            ]
+        };
+        
         function getCurrentTime() {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
@@ -502,6 +511,19 @@
         function formatDate() {
             const date = new Date();
             return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+        }
+        
+        // 기도제목 렌더링
+        function renderPrayerList() {
+            const prayerList = document.getElementById('prayerList');
+            const prayers = prayerByDays[gameState.maxHeight] || prayerByDays[21];
+            
+            prayerList.innerHTML = prayers.map(prayer => `
+                <div class="prayer-item">
+                    <div class="prayer-item-title">${prayer.num}️⃣ ${prayer.title}</div>
+                    <div>${prayer.content}</div>
+                </div>
+            `).join('');
         }
         
         // 📥 Google Sheets에서 데이터 불러오기
@@ -532,10 +554,12 @@
                 }
                 
                 updateSaveStatus('로드됨 ✓');
+                renderPrayerList();
                 updateUI();
             } catch(err) {
                 console.log('데이터 로드 실패:', err);
                 updateSaveStatus('오프라인');
+                renderPrayerList();
                 updateUI();
             }
         }
@@ -623,9 +647,9 @@
         function checkAndResetDay() {
             const now = new Date();
             const timeDiff = now - gameState.lastResetTime;
-            const minutesPassed = timeDiff / (1000 * 60);
+            const hoursPassed = timeDiff / (1000 * 60 * 60);
             
-            if (minutesPassed >= 1) {
+            if (hoursPassed >= 24) {
                 const allCompleted = gameState.participants.every(p => p.completed);
                 
                 if (allCompleted) {
@@ -653,7 +677,7 @@
                 const notification = document.getElementById('notificationArea');
                 notification.innerHTML = `
                     <div class="notification success">
-                        🎉 모두 완료! 모래성이 한층 높아졌습니다! (${gameState.currentDay}/21)
+                        🎉 모두 완료! 모래성이 한층 높아졌습니다! (${gameState.currentDay}/${gameState.maxHeight})
                     </div>
                 `;
                 
@@ -697,7 +721,7 @@
             notification.innerHTML = `
                 <div class="notification success">
                     ✅ 오늘 모두 완료했습니다!<br/>
-                    <span style="font-size: 12px;">1분 후 자동으로 진행됩니다.</span>
+                    <span style="font-size: 12px;">24시간 후 자동으로 진행됩니다.</span>
                 </div>
             `;
             
@@ -711,16 +735,13 @@
             let displayHeight;
             if (gameState.viewingDay === gameState.currentDay) {
                 const completed = gameState.participants.filter(p => p.completed).length;
-                gameState.castleHeight = gameState.currentDay + (completed / 12);
+                gameState.castleHeight = gameState.currentDay + (completed / gameState.participants.length);
                 displayHeight = gameState.castleHeight;
             } else {
                 displayHeight = gameState.castleHistory[gameState.viewingDay] || 0;
             }
             
-            // 21일을 기준으로 이미지 아래에서부터 표시 (클립)
             const percentageToShow = (displayHeight / gameState.maxHeight) * 100;
-            
-            // 아래에서부터 올라오는 효과
             castleImage.style.clipPath = `inset(${100 - percentageToShow}% 0 0 0)`;
         }
         
@@ -733,6 +754,8 @@
             document.getElementById('todayDate').textContent = formatDate();
             document.getElementById('ddayNumber').textContent = gameState.currentDay;
             document.getElementById('dayLabel').textContent = `D+${gameState.viewingDay}`;
+            
+            document.getElementById('progressTitle').textContent = `모래성 완성도 (${gameState.maxHeight}일)`;
             
             if (gameState.viewingDay === gameState.currentDay) {
                 document.getElementById('completedCount').textContent = completed;
@@ -747,8 +770,10 @@
             document.getElementById('progressPercent').textContent = Math.round((gameState.viewingDay / gameState.maxHeight) * 100) + '%';
             document.getElementById('progressFill').style.width = (gameState.viewingDay / gameState.maxHeight * 100) + '%';
             
+            // 과거 기록도 볼 수 있게: castleHistory의 최대 인덱스까지만 허용
+            const maxViewableDay = gameState.castleHistory.length - 1;
             document.getElementById('prevBtn').disabled = gameState.viewingDay === 0;
-            document.getElementById('nextBtn').disabled = gameState.viewingDay === gameState.currentDay;
+            document.getElementById('nextBtn').disabled = gameState.viewingDay >= maxViewableDay;
             
             updateCastleImage();
             
