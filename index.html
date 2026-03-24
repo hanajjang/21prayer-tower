@@ -443,26 +443,22 @@
         // 기도제목
         const prayerByDays = {
             5: [
-                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
-                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
-                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
-                { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' },
-                { num: 5, title: '특별 기도', content: '오늘의 기도 제목' }
+                { num: 1, title: '선생님을 위한 기도', content: '(특히나 6월 전까지 재판을 위해 기도해주세요!)' },
+                { num: 2, title: '청미부서를 위한 기도', content: '(팀원기도, 청미 생명기도, 부서가 주 뜻대로 될 수 있게)' },
+                { num: 3, title: '나의 사명과 차원을 높이기 위한 기도', content: '' },
+                { num: 4, title: '그외 감사, 회개 등', content: '' }
             ],
             7: [
-                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
-                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
-                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
-                { num: 4, title: '가족을 위한 기도', content: '가족 모두의 신앙 성장' },
-                { num: 5, title: '감사, 회개 등', content: '감사와 회개의 기도' },
-                { num: 6, title: '지역사회를 위한 기도', content: '지역의 영적 부흥' },
-                { num: 7, title: '특별 기도', content: '오늘의 특별한 기도제목' }
+                { num: 1, title: '선생님을 위한 기도', content: '(특히나 6월 전까지 재판을 위해 기도해주세요!)' },
+                { num: 2, title: '청미부서를 위한 기도', content: '(팀원기도, 청미 생명기도, 부서가 주 뜻대로 될 수 있게)' },
+                { num: 3, title: '나의 사명과 차원을 높이기 위한 기도', content: '' },
+                { num: 4, title: '그외 감사, 회개 등', content: '' }
             ],
             21: [
-                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
-                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
-                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
-                { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' }
+                { num: 1, title: '선생님을 위한 기도', content: '(특히나 6월 전까지 재판을 위해 기도해주세요!)' },
+                { num: 2, title: '청미부서를 위한 기도', content: '(팀원기도, 청미 생명기도, 부서가 주 뜻대로 될 수 있게)' },
+                { num: 3, title: '나의 사명과 차원을 높이기 위한 기도', content: '' },
+                { num: 4, title: '그외 감사, 회개 등', content: '' }
             ]
         };
         
@@ -478,7 +474,6 @@
             return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
         }
         
-        // 기도제목 렌더링
         function renderPrayerList() {
             const prayerList = document.getElementById('prayerList');
             const prayers = prayerByDays[gameState.maxHeight] || prayerByDays[21];
@@ -486,7 +481,7 @@
             prayerList.innerHTML = prayers.map(prayer => `
                 <div class="prayer-item">
                     <div class="prayer-item-title">${prayer.num}️⃣ ${prayer.title}</div>
-                    <div>${prayer.content}</div>
+                    ${prayer.content ? `<div style="font-size: 10px; color: #999; margin-top: 4px;">${prayer.content}</div>` : ''}
                 </div>
             `).join('');
         }
