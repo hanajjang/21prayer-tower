@@ -411,7 +411,7 @@
 
     <script>
         // 🔑 Google Apps Script 배포 URL
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwj6ziZBwSk5CYRmYoqxsV-HHzLht4H1ZVM83JbufWF_Dm0KDDcoW7ZhIlcWG5_lHxT/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwl7tVNmdcPsKsR9fbGsW99VKxT-4znXQKAHTM2B5DHS2TrReFTZyB1vwsVUOjtzmCmTw/exec';
         
         // 중복 실행 방지
         let lastAutoExecuteDate = null;
@@ -441,26 +441,30 @@
         };
         
         // 기도제목
-const prayerByDays = {
-    5: [
-        { num: 1, title: '선생님을 위한 기도', content: '특히나 6월 전까지 재판을 위해 기도해주세요!' },
-        { num: 2, title: '청미부서를 위한 기도', content: '팀원기도, 청미 생명기도, 부서가 주 뜻대로 될 수 있게' },
-        { num: 3, title: '나를 위한 기도', content: '나의 사명과 차원을 높이기 위해' },
-        { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' }
-    ],
-    7: [
-        { num: 1, title: '선생님을 위한 기도', content: '특히나 6월 전까지 재판을 위해 기도해주세요!' },
-        { num: 2, title: '청미부서를 위한 기도', content: '팀원기도, 청미 생명기도, 부서가 주 뜻대로 될 수 있게' },
-        { num: 3, title: '나를 위한 기도', content: '나의 사명과 차원을 높이기 위해' },
-        { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' }
-    ],
-    21: [
-        { num: 1, title: '선생님을 위한 기도', content: '특히나 6월 전까지 재판을 위해 기도해주세요!' },
-        { num: 2, title: '청미부서를 위한 기도', content: '팀원기도, 청미 생명기도, 부서가 주 뜻대로 될 수 있게' },
-        { num: 3, title: '나를 위한 기도', content: '나의 사명과 차원을 높이기 위해' },
-        { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' }
-    ]
-};
+        const prayerByDays = {
+            5: [
+                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
+                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
+                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
+                { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' },
+                { num: 5, title: '특별 기도', content: '오늘의 기도 제목' }
+            ],
+            7: [
+                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
+                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
+                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
+                { num: 4, title: '가족을 위한 기도', content: '가족 모두의 신앙 성장' },
+                { num: 5, title: '감사, 회개 등', content: '감사와 회개의 기도' },
+                { num: 6, title: '지역사회를 위한 기도', content: '지역의 영적 부흥' },
+                { num: 7, title: '특별 기도', content: '오늘의 특별한 기도제목' }
+            ],
+            21: [
+                { num: 1, title: '선생님을 위한 기도', content: '6월 전까지 재판을 위해' },
+                { num: 2, title: '청미부서를 위한 기도', content: '팀원, 생명기도, 주의 뜻' },
+                { num: 3, title: '나의 사명과 차원', content: '사명과 차원을 높이기 위해' },
+                { num: 4, title: '감사, 회개 등', content: '감사와 회개의 기도' }
+            ]
+        };
         
         function getCurrentTime() {
             const now = new Date();
@@ -534,6 +538,9 @@ const prayerByDays = {
                 updateSaveStatus('로드됨 ✓');
                 renderPrayerList();
                 updateUI();
+                
+                // 🔥 핵심 수정: 데이터 로드 후 자동 진행/리셋 체크 (접속할 때마다)
+                checkAndResetDay();
             } catch(err) {
                 console.log('데이터 로드 실패:', err);
                 updateSaveStatus('오프라인');
@@ -753,27 +760,10 @@ const prayerByDays = {
             `).join('');
         }
         
-        // 자정(00:00)마다 체크하도록 수정
-        function scheduleNextCheck() {
-            const now = new Date();
-            const tomorrow = new Date(now);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0, 0, 1, 0);  // 내일 자정 0시 0분 1초
-            
-            const timeUntilMidnight = tomorrow - now;
-            
-            setTimeout(() => {
-                checkAndResetDay();
-                scheduleNextCheck();  // 다음 자정 예약
-            }, timeUntilMidnight);
-        }
-        
-        // 앱 시작 시 첫 번째 체크 스케줄 설정
-        scheduleNextCheck();
         
         document.getElementById('todayDate').textContent = formatDate();
         
-        // 앱 시작 시 Google Sheets에서 데이터 로드
+        // 앱 시작 시 Google Sheets에서 데이터 로드 (loadGameData 내에서 checkAndResetDay 자동 실행)
         loadGameData();
     </script>
 </body>
